@@ -13,7 +13,7 @@
 R__LOAD_LIBRARY(libMcIniData.so)
 
 void convertAAMCC(TString inputFileName = "particles.root", TString outputFileName = "mcini_aamcc.root", Bool_t only_not_empty = true,
-	Int_t aProj = 197, Int_t zProj = 79, Double_t pProj = 11.,
+	Int_t aProj = 197, Int_t zProj = 79, Double_t pProj = 12.,
 	Int_t aTarg = 197, Int_t zTarg = 79, Double_t pTarg = 0.,
 	Double_t bMin = 0., Double_t bMax = 20., Int_t bWeight = 0,
 	Double_t phiMin = 0., Double_t phiMax = 0.,
@@ -38,14 +38,12 @@ void convertAAMCC(TString inputFileName = "particles.root", TString outputFileNa
 	std::vector<Double_t>* pXonSideB = 0;
 	std::vector<Double_t>* pYonSideB = 0;
 	std::vector<Double_t>* pZonSideB = 0;
-	Int_t Npart, Ncoll;
+	Int_t Npart=0, Ncoll;
 	Float_t b;
 	UInt_t id;
 	Double_t AonA, AonB, ZonA, ZonB, Energy;
 	Float_t Ecc[10];
 
-
-	//nEvents = fTreeG->GetEntries();
 
 	fTreeG->SetBranchAddress("id", &id);
 	fTreeG->SetBranchAddress("A_on_A", &MassOnSideA);
@@ -53,7 +51,7 @@ void convertAAMCC(TString inputFileName = "particles.root", TString outputFileNa
 	fTreeG->SetBranchAddress("Z_on_A", &ChargeOnSideA);
 	fTreeG->SetBranchAddress("Z_on_B", &ChargeOnSideB);
 	fTreeG->SetBranchAddress("impact_parameter", &b);
-	fTreeG->SetBranchAddress("NpartA", &Npart);
+	//fTreeG->SetBranchAddress("NpartA", &Npart);
 	fTreeG->SetBranchAddress("Ncoll", &Ncoll);
 	fTreeG->SetBranchAddress("pX_on_A", &pXonSideA);
 	fTreeG->SetBranchAddress("pY_on_A", &pYonSideA);
@@ -83,7 +81,6 @@ void convertAAMCC(TString inputFileName = "particles.root", TString outputFileNa
 	iniTree->Branch("iniState", "EventInitialState", iniState);
 	iniTree->Branch("event", "UEvent", event);
 
-	//Long64_t nentries = fTreeG->GetEntriesFast();
 	Long64_t eventCounter = 0;
 	Int_t child[2] = { 0,0 };
 
@@ -94,8 +91,6 @@ void convertAAMCC(TString inputFileName = "particles.root", TString outputFileNa
 		iniState->Clear();
 
 		if (iev % 100 == 0) std::cout << "Event [" << iev << "/" << fTreeG->GetEntries() << "]" << std::endl;
-
-		//if (only_not_empty) continue;
 
 		// Fill event
 		event->SetEventNr(id);
@@ -108,7 +103,6 @@ void convertAAMCC(TString inputFileName = "particles.root", TString outputFileNa
 
 		iniState->setNColl(Ncoll);
 		iniState->setNPart(Npart);
-
 		// Fill particle
 		for (Int_t ipart = 0; ipart < (MassOnSideA->size()); ipart++)
 		{
@@ -127,22 +121,58 @@ void convertAAMCC(TString inputFileName = "particles.root", TString outputFileNa
 				0, 0,
 				0, 0, child,
 				pXonSideA->at(ipart) / 1000, pYonSideA->at(ipart) / 1000, pZonSideA->at(ipart) / 1000, Energy,
-				0, 0, 0, 0,
+				0, 0, 0, 1,
 				1.);
-			if (MassOnSideA->at(ipart) == 1 && ChargeOnSideA->at(ipart) == 1) event->AddParticle(ipart, 2212, 0,
+			else if (MassOnSideA->at(ipart) == 1 && ChargeOnSideA->at(ipart) == 1) event->AddParticle(ipart, 2212, 0,
 				0, 0,
 				0, 0, child,
 				pXonSideA->at(ipart) / 1000, pYonSideA->at(ipart) / 1000, pZonSideA->at(ipart) / 1000, Energy,
-				0, 0, 0, 0,
+				0, 0, 0, 1,
 				1.);
-			else event->AddParticle(ipart, fragment_id, 0,
+			else{
+				event->AddParticle(ipart, fragment_id, 0,
 				0, 0,
 				0, 0, child,
 				pXonSideA->at(ipart) / 1000, pYonSideA->at(ipart) / 1000, pZonSideA->at(ipart) / 1000, Energy,
-				0, 0, 0, 0,
+				0, 0, 0, 1,
 				1.);
+			}
 		}
 
+		for (Int_t ipart = 0; ipart < (MassOnSideB->size()); ipart++)
+		{
+			Int_t fragment_id = 0;
+			
+			Int_t hundreds_mass = MassOnSideB->at(ipart)/100;
+			Int_t dozens_mass = MassOnSideB->at(ipart)/10;
+			Int_t hundreds_charge = ChargeOnSideB->at(ipart)/100;
+			Int_t dozens_charge = ChargeOnSideB->at(ipart)/10;
+
+			fragment_id = pow(10, 9) + pow(10, 6)*hundreds_charge + pow(10, 5)*(dozens_charge - hundreds_charge*10) + pow(10, 4)*(ChargeOnSideB->at(ipart)- dozens_charge*10) + pow(10, 3)*hundreds_mass + pow(10, 2)*(dozens_mass - hundreds_mass*10) + 10*(MassOnSideB->at(ipart)- dozens_mass*10);
+
+			Energy = pow(pow(pXonSideB->at(ipart) / 1000, 2) + pow(pYonSideB->at(ipart) / 1000, 2) + pow(pZonSideB->at(ipart) / 1000, 2) + pow(0.9395654 * (MassOnSideB->at(ipart) - ChargeOnSideB->at(ipart)) + 0.9382721 * ChargeOnSideB->at(ipart), 2), 0.5);
+			
+			if (MassOnSideB->at(ipart) == 1 && ChargeOnSideB->at(ipart) == 0) event->AddParticle(ipart, 2112, 0,
+				0, 0,
+				0, 0, child,
+				pXonSideB->at(ipart) / 1000, pYonSideB->at(ipart) / 1000, pZonSideB->at(ipart) / 1000, Energy,
+				0, 0, 0, -1,
+				1.);
+			else if (MassOnSideB->at(ipart) == 1 && ChargeOnSideB->at(ipart) == 1) event->AddParticle(ipart, 2212, 0,
+				0, 0,
+				0, 0, child,
+				pXonSideB->at(ipart) / 1000, pYonSideB->at(ipart) / 1000, pZonSideB->at(ipart) / 1000, Energy,
+				0, 0, 0, -1,
+				1.);
+			else{
+				event->AddParticle(ipart, fragment_id, 0,
+				0, 0,
+				0, 0, child,
+				pXonSideB->at(ipart) / 1000, pYonSideB->at(ipart) / 1000, pZonSideB->at(ipart) / 1000, Energy,
+				0, 0, 0, -1,
+				1.);
+			}
+		}
 		iniTree->Fill();
 		eventCounter++;
 	}
