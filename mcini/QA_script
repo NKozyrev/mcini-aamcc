@@ -1,0 +1,31 @@
+#!/bin/bash
+string1="$1.root"
+string2="$1_mcini.root"
+echo "Beginning of QA calculations of " $string1 " file"
+
+# You have to change it for your system
+PathToMcini="/media/sf_AAMCC/mcini-aamcc/mcini"
+PathToConverterMcini="$PathToMcini/macro/convertAAMCC.C"
+
+PathToHisto="/media/sf_AAMCC/QA_AAMCC/output/histos/QA_$1.pdf"
+PathToQAscript="/media/sf_AAMCC/QA_AAMCC/FragmentationInput_mcini.C"
+
+# Input impulse and A
+Impulse="12"
+MassNumber="197"
+
+echo "mcini converter START:"
+string3="(\"$PathToMcini/input/$string1\",\"$PathToMcini/output/$string2\")"
+root -l << EOF
+.x $PathToConverterMcini $string3
+EOF
+echo "mcini converter END"
+
+echo "QA pdf calc START"
+string4="(\"/media/sf_AAMCC/mcini-aamcc/mcini/output/$string2\",\"/media/sf_AAMCC/QA_AAMCC/output/histos/$string1\",\"$PathToHisto\", \"$PathToHisto(\", \"$PathToHisto)\",1,$MassNumber,$Impulse)"
+root -l << EOF
+.x $PathToQAscript $string4
+EOF
+echo "QA pdf calc END"
+
+xdg-open $PathToHisto

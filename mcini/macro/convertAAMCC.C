@@ -182,4 +182,5 @@ void convertAAMCC(TString inputFileName = "particles.root", TString outputFileNa
 	header.Write();
 	iniTree->Write();
 	fOut->Close();
+	gApplication->Terminate();
 }
